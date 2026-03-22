@@ -1,6 +1,6 @@
-import { GoogleGenAI } from '@google/genai';
+import Groq from 'groq-sdk';
 
-const ai = new GoogleGenAI({ apiKey: process.env.GEMINI_API_KEY! });
+const groq = new Groq({ apiKey: process.env.GROQ_API_KEY! });
 
 export interface SeccaoEstrutura {
   capitulo_index: number;
@@ -41,17 +41,18 @@ Responde APENAS com JSON válido, sem markdown:
   ]
 }`;
 
-  const response = await ai.models.generateContent({
-    model: 'gemini-2.0-flash',
-    contents: prompt,
-    config: { temperature: 0.4, maxOutputTokens: 2048 },
+  const response = await groq.chat.completions.create({
+    model: 'meta-llama/llama-4-maverick-17b-128e-instruct',
+    messages: [{ role: 'user', content: prompt }],
+    temperature: 0.4,
+    max_tokens: 2048,
+    response_format: { type: 'json_object' },
   });
 
-  const raw = response.text?.trim() ?? '';
-  const json = raw.replace(/^```json\n?/, '').replace(/\n?```$/, '').trim();
+  const raw = response.choices[0]?.message?.content?.trim() ?? '';
 
   try {
-    return JSON.parse(json) as PlanoTrabalho;
+    return JSON.parse(raw) as PlanoTrabalho;
   } catch {
     throw new Error(`Planificador: JSON inválido — ${raw.slice(0, 200)}`);
   }

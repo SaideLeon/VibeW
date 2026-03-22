@@ -28,7 +28,7 @@ export async function POST(req: Request) {
       .select('titulo, autor, ano, conteudo')
       .eq('trabalho_id', trabalho_id);
 
-    // Executar Planificador (Gemini)
+    // Executar Planificador (Groq)
     const plano = await executarPlanificador(tema, fichas ?? []);
 
     // Limpar estrutura anterior (re-planificação)
