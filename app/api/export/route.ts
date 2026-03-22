@@ -2,6 +2,11 @@ import { NextResponse } from 'next/server';
 import { generateDocx } from '@/lib/docx';
 import { createServerSupabaseClient } from '@/lib/supabase-server';
 
+interface CapituloExportacao {
+  titulo: string;
+  seccoes: string[];
+}
+
 function normalizarNomeFicheiro(valor: string) {
   return valor
     .normalize('NFD')
@@ -19,8 +24,8 @@ export async function POST(req: Request) {
 
     const { content, filename = 'documento', trabalho_id } = await req.json();
 
-    let markdown = content;
-    let resolvedFilename = filename;
+    let markdown: string | undefined = typeof content === 'string' ? content : undefined;
+    let resolvedFilename: string = typeof filename === 'string' ? filename : 'documento';
 
     if (trabalho_id) {
       const { data: trabalho, error: trabalhoError } = await supabase
@@ -50,11 +55,14 @@ export async function POST(req: Request) {
 
       if (seccoesError) throw seccoesError;
 
-      const seccoesMap = new Map(
-        (seccoes ?? []).map((sec) => [`${sec.capitulo_index}-${sec.seccao_index}`, sec.conteudo_markdown])
+      const seccoesMap = new Map<string, string>(
+        (seccoes ?? []).map((sec) => [
+          `${sec.capitulo_index}-${sec.seccao_index}`,
+          sec.conteudo_markdown ?? '',
+        ])
       );
 
-      const capitulos = new Map<number, { titulo: string; seccoes: string[] }>();
+      const capitulos = new Map<number, CapituloExportacao>();
 
       for (const row of estrutura ?? []) {
         const chaveCapitulo = row.capitulo_index;
