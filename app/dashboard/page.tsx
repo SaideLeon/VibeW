@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useCallback } from 'react';
 import { createClient } from '@/lib/supabase';
 import { useRouter } from 'next/navigation';
 import Link from 'next/link';
@@ -23,6 +23,14 @@ export default function DashboardPage() {
   const [showForm, setShowForm] = useState(false);
   const [userEmail, setUserEmail] = useState('');
 
+  const carregarTrabalhos = useCallback(async () => {
+    setLoading(true);
+    const res = await fetch('/api/trabalhos');
+    const data = await res.json();
+    setTrabalhos(data.trabalhos ?? []);
+    setLoading(false);
+  }, []);
+
   useEffect(() => {
     const init = async () => {
       const { data: { user } } = await supabase.auth.getUser();
@@ -30,16 +38,8 @@ export default function DashboardPage() {
       setUserEmail(user.email ?? '');
       await carregarTrabalhos();
     };
-    init();
-  }, []);
-
-  const carregarTrabalhos = async () => {
-    setLoading(true);
-    const res = await fetch('/api/trabalhos');
-    const data = await res.json();
-    setTrabalhos(data.trabalhos ?? []);
-    setLoading(false);
-  };
+    void init();
+  }, [carregarTrabalhos, router, supabase]);
 
   const criarTrabalho = async () => {
     if (!novoTema.trim()) return;
@@ -183,7 +183,7 @@ export default function DashboardPage() {
             <div style={{ fontSize: '40px', marginBottom: '12px' }}>📝</div>
             <div style={{ fontSize: '15px' }}>Ainda não tens trabalhos.</div>
             <div style={{ fontSize: '13px', marginTop: '6px' }}>
-              Clica em "Novo trabalho" para começar.
+              Clica em &quot;Novo trabalho&quot; para começar.
             </div>
           </div>
         ) : (

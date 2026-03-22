@@ -1,5 +1,5 @@
 import { NextResponse } from 'next/server';
-import { createServerSupabaseClient } from '@/lib/supabase';
+import { createServerSupabaseClient } from '@/lib/supabase-server';
 import { executarPlanificador } from '@/lib/agents/planificador';
 
 export async function POST(req: Request) {
