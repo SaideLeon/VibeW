@@ -103,7 +103,7 @@ export default function TrabalhoPage() {
         setEditando(null);
 
       } else {
-        const r = await fetch('/api/chat', { method: 'POST', headers: {'Content-Type':'application/json'}, body: JSON.stringify({ messages: msgs.slice(-10).map(m=>({role:m.role,content:m.content})).concat([{role:'user',content:txt}]), trabalho_id: id }) });
+        const r = await fetch('/api/agent/chat', { method: 'POST', headers: {'Content-Type':'application/json'}, body: JSON.stringify({ messages: msgs.slice(-10).map(m=>({role:m.role,content:m.content})).concat([{role:'user',content:txt}]), trabalho_id: id }) });
         const d = await r.json();
         if (!r.ok) throw new Error(d.error);
         resposta = d.content;
@@ -184,7 +184,7 @@ export default function TrabalhoPage() {
               <div style={{ fontSize:'28px', marginBottom:'12px' }}>👋</div>
               <strong style={{ color:'#4a5568' }}>Como começar:</strong><br/>
               1. Descreve o tema — o <span style={{ color:'#4f8ef7' }}>Planificador</span> gera o índice automaticamente.<br/>
-              2. Selecciona secções no painel à direita e clica "Gerar".<br/>
+              2. Selecciona secções no painel à direita e clica &quot;Gerar&quot;.<br/>
               3. Pede edições específicas via chat a qualquer momento.<br/>
               4. Exporta o trabalho completo em DOCX quando estiver pronto.
             </div>
@@ -226,11 +226,11 @@ export default function TrabalhoPage() {
         {/* Input */}
         <div style={{ padding:'16px 20px', borderTop:'1px solid #1e2535', background:'#0f1219' }}>
           <div style={{ display:'flex', gap:'8px', alignItems:'flex-end' }}>
-            <textarea value={input} onChange={e=>setInput(e.target.value)} onKeyDown={e=>{if(e.key==='Enter'&&!e.shiftKey){e.preventDefault();enviar();}}} placeholder={editando?`Alterações para "${editando.titulo_seccao}"…`:'Descreve o tema, pede planificação ou alterações…'} disabled={loading||gerando} rows={3}
+            <textarea value={input} onChange={e=>setInput(e.target.value)} onKeyDown={e=>{if(e.key==='Enter'&&!e.shiftKey){e.preventDefault();enviar();}}} placeholder={editando?`Alterações para ${editando.titulo_seccao}…`:'Descreve o tema, pede planificação ou alterações…'} disabled={loading||gerando} rows={3}
               style={{ flex:1, background:'#161b27', border:`1px solid ${editando?'#a78bfa60':'#1e2535'}`, borderRadius:'8px', padding:'10px 13px', color:'#e2e8f0', fontSize:'14px', fontFamily:'inherit', resize:'none', outline:'none' }}/>
             <button onClick={enviar} disabled={loading||gerando||!input.trim()} style={{ padding:'10px 16px', borderRadius:'8px', border:'none', background:loading||gerando||!input.trim()?'#1e2535':(editando?'#a78bfa':'#4f8ef7'), color:'#fff', cursor:loading||gerando||!input.trim()?'default':'pointer', fontSize:'18px', alignSelf:'flex-end' }}>↑</button>
           </div>
-          <div style={{ fontSize:'11px', color:'#2d3748', marginTop:'5px' }}>Enter envia · Shift+Enter nova linha · Começa com "planifica o tema:" para gerar estrutura</div>
+          <div style={{ fontSize:'11px', color:'#2d3748', marginTop:'5px' }}>Enter envia · Shift+Enter nova linha · Começa com &quot;planifica o tema:&quot; para gerar estrutura</div>
         </div>
       </div>
 

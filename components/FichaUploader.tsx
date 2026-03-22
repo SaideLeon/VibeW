@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useCallback } from 'react';
 
 interface Ficha {
   id: string;
@@ -30,15 +30,31 @@ export default function FichaUploader({ trabalhoId, onClose }: Props) {
   const [showForm, setShowForm] = useState(false);
   const [error, setError] = useState('');
 
-  useEffect(() => { carregar(); }, []);
-
-  const carregar = async () => {
+  const carregar = useCallback(async () => {
     setLoading(true);
     const res = await fetch(`/api/fichas?trabalho_id=${trabalhoId}`);
     const data = await res.json();
     setFichas(data.fichas ?? []);
     setLoading(false);
-  };
+  }, [trabalhoId]);
+
+  useEffect(() => {
+    let ativo = true;
+
+    const run = async () => {
+      const res = await fetch(`/api/fichas?trabalho_id=${trabalhoId}`);
+      const data = await res.json();
+      if (!ativo) return;
+      setFichas(data.fichas ?? []);
+      setLoading(false);
+    };
+
+    void run();
+
+    return () => {
+      ativo = false;
+    };
+  }, [trabalhoId]);
 
   const guardar = async () => {
     setError('');
