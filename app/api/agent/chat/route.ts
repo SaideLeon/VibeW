@@ -2,6 +2,7 @@ import { NextResponse } from 'next/server';
 import Groq from 'groq-sdk';
 
 const groq = new Groq({ apiKey: process.env.GROQ_API_KEY! });
+const encoder = new TextEncoder();
 
 interface ChatMessage {
   role: 'user' | 'assistant' | 'system';
@@ -27,17 +28,36 @@ HISTÓRICO RECENTE:
 ${history || '(sem histórico)'}
 
 Responde de forma útil, académica e em Português europeu. Sê conciso mas preciso.
+Usa Markdown quando isso melhorar a legibilidade da resposta (listas, destaque, subtítulos e blocos de citação).
 Se o utilizador pedir para gerar índice, estrutura ou organização do trabalho, sugere o agente planificador.`;
 
-    const response = await groq.chat.completions.create({
+    const stream = await groq.chat.completions.create({
       model: 'openai/gpt-oss-120b',
       messages: [{ role: 'user', content: prompt }],
       temperature: 0.5,
       max_tokens: 1024,
+      stream: true,
     });
 
-    return NextResponse.json({
-      content: response.choices[0]?.message?.content?.trim() ?? 'Sem resposta.',
+    const readable = new ReadableStream({
+      async start(controller) {
+        try {
+          for await (const chunk of stream) {
+            const delta = chunk.choices[0]?.delta?.content ?? '';
+            if (delta) controller.enqueue(encoder.encode(delta));
+          }
+          controller.close();
+        } catch (streamErr: any) {
+          controller.error(streamErr);
+        }
+      },
+    });
+
+    return new Response(readable, {
+      headers: {
+        'Content-Type': 'text/plain; charset=utf-8',
+        'Cache-Control': 'no-cache, no-transform',
+      },
     });
   } catch (err: any) {
     console.error('Agent chat error:', err);
