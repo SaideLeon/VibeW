@@ -1,3 +1,4 @@
+// CAMINHO: app/api/export/route.ts
 import { NextResponse } from 'next/server';
 import { generateDocx } from '@/lib/docx';
 import { createServerSupabaseClient } from '@/lib/supabase-server';
@@ -66,9 +67,10 @@ export async function POST(req: Request) {
 
       for (const row of estrutura ?? []) {
         const chaveCapitulo = row.capitulo_index;
-        const atual = capitulos.get(chaveCapitulo) ?? {
+        // FIX: tipo explícito para evitar inferência de never[]
+        const atual: CapituloExportacao = capitulos.get(chaveCapitulo) ?? {
           titulo: row.titulo_capitulo,
-          seccoes: [],
+          seccoes: [] as string[],
         };
 
         const conteudo = seccoesMap.get(`${row.capitulo_index}-${row.seccao_index}`)?.trim();
@@ -97,7 +99,7 @@ export async function POST(req: Request) {
     }
 
     if (!markdown?.trim()) {
-      return NextResponse.json({ error: 'Content ou trabalho_id é obrigatório' }, { status: 400 });
+      return NextResponse.json({ error: 'content ou trabalho_id é obrigatório' }, { status: 400 });
     }
 
     const buffer = await generateDocx(markdown);
