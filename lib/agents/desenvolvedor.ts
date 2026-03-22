@@ -83,7 +83,7 @@ Responde APENAS com JSON válido, sem markdown exterior:
 }`;
 
   const response = await groq.chat.completions.create({
-    model: 'meta-llama/llama-4-maverick-17b-128e-instruct',
+    model: 'openai/gpt-oss-120b',
     messages: [{ role: 'user', content: prompt }],
     temperature: 0.6,
     max_tokens: 4096,
