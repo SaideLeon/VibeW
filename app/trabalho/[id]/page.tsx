@@ -6,8 +6,9 @@ import { createClient } from '@/lib/supabase';
 import IndicePanel, { EstruturaRow } from '@/components/IndicePanel';
 import FichaUploader from '@/components/FichaUploader';
 import Link from 'next/link';
+import { MarkdownContent } from '@/components/MarkdownContent';
 
-interface Mensagem { id: string; role: 'user' | 'assistant'; agent_type?: string | null; content: string; }
+interface Mensagem { id: string; role: 'user' | 'assistant'; agent_type?: string | null; content: string; isStreaming?: boolean; }
 interface Trabalho { id: string; titulo: string; tema: string; norma: string; }
 const uid = () => Math.random().toString(36).slice(2, 10);
 const BADGE: Record<string, { cor: string; label: string }> = {
@@ -62,8 +63,8 @@ export default function TrabalhoPage() {
     setEstrutura(data ?? []);
   }, [id]);
 
-  const addMsg = (content: string, role: 'user'|'assistant', agent_type?: string) =>
-    setMsgs(prev => [...prev, { id: uid(), role, agent_type, content }]);
+  const addMsg = (content: string, role: 'user'|'assistant', agent_type?: string, isStreaming = false) =>
+    setMsgs(prev => [...prev, { id: uid(), role, agent_type, content, isStreaming }]);
 
   const saveMsg = async (role: 'user'|'assistant', content: string, agent_type?: string|null) => {
     const { data: { user } } = await sb.auth.getUser();
@@ -103,14 +104,42 @@ export default function TrabalhoPage() {
         setEditando(null);
 
       } else {
+        agType = 'assistant';
+        const streamingId = uid();
+        setMsgs(prev => {
+          const s = prev.filter(m => !m.content.startsWith('⏳'));
+          return [...s, { id: streamingId, role: 'assistant', agent_type: null, content: '', isStreaming: true }];
+        });
+
         const r = await fetch('/api/agent/chat', { method: 'POST', headers: {'Content-Type':'application/json'}, body: JSON.stringify({ messages: msgs.slice(-10).map(m=>({role:m.role,content:m.content})).concat([{role:'user',content:txt}]), trabalho_id: id }) });
-        const d = await r.json();
-        if (!r.ok) throw new Error(d.error);
-        resposta = d.content;
+        if (!r.ok) {
+          const d = await r.json();
+          throw new Error(d.error);
+        }
+        if (!r.body) throw new Error('Streaming indisponível nesta resposta.');
+
+        const reader = r.body.getReader();
+        const decoder = new TextDecoder();
+        let done = false;
+
+        while (!done) {
+          const result = await reader.read();
+          done = result.done;
+          const chunkValue = result.value ? decoder.decode(result.value, { stream: !done }) : '';
+          if (chunkValue) {
+            resposta += chunkValue;
+            setMsgs(prev => prev.map(m => m.id === streamingId ? { ...m, content: resposta, isStreaming: !done } : m));
+          }
+        }
+
+        setMsgs(prev => prev.map(m => m.id === streamingId ? { ...m, content: resposta || 'Sem resposta.', isStreaming: false } : m));
+        resposta = resposta || 'Sem resposta.';
       }
 
-      setMsgs(prev => { const s = prev.filter(m => !m.content.startsWith('⏳')); return [...s, { id: uid(), role: 'assistant', agent_type: agType, content: resposta }]; });
-      await saveMsg('assistant', resposta, agType);
+      if (agType !== 'assistant') {
+        setMsgs(prev => { const s = prev.filter(m => !m.content.startsWith('⏳')); return [...s, { id: uid(), role: 'assistant', agent_type: agType, content: resposta }]; });
+      }
+      await saveMsg('assistant', resposta, agType === 'assistant' ? null : agType);
     } catch (e: any) {
       setMsgs(prev => prev.filter(m => !m.content.startsWith('⏳')));
       addMsg(`❌ Erro: ${e.message}`, 'assistant');
@@ -192,7 +221,6 @@ export default function TrabalhoPage() {
           {msgs.map(m => {
             const isUser = m.role === 'user';
             const badge = m.agent_type ? BADGE[m.agent_type] : null;
-            const parts = m.content.split(/(\*\*[^*]+\*\*)/g);
             return (
               <div key={m.id} style={{ marginBottom:'16px', display:'flex', flexDirection: isUser?'row-reverse':'row', gap:'10px', alignItems:'flex-start' }}>
                 <div style={{ width:'30px', height:'30px', borderRadius:'50%', flexShrink:0, background: isUser?'#1e2535':(badge?`${badge.cor}20`:'#161b27'), border:`1px solid ${isUser?'#2d3748':(badge?.cor??'#1e2535')}50`, display:'flex', alignItems:'center', justifyContent:'center', fontSize:'13px' }}>
@@ -200,8 +228,9 @@ export default function TrabalhoPage() {
                 </div>
                 <div style={{ maxWidth:'78%' }}>
                   {badge && <div style={{ fontSize:'11px', color:badge.cor, marginBottom:'4px' }}>{badge.label}</div>}
-                  <div style={{ padding:'10px 14px', borderRadius:'10px', background: isUser?'#161b27':'#0f1520', border:`1px solid ${isUser?'#1e2535':(badge?.cor?badge.cor+'20':'#1e2535')}`, fontSize:'13px', lineHeight:'1.7', color:'#cbd5e1', whiteSpace:'pre-wrap' }}>
-                    {parts.map((p,i) => p.startsWith('**')&&p.endsWith('**') ? <strong key={i} style={{ color:'#f1f5f9' }}>{p.slice(2,-2)}</strong> : <span key={i}>{p}</span>)}
+                  <div style={{ padding:'10px 14px', borderRadius:'10px', background: isUser?'#161b27':'#0f1520', border:`1px solid ${isUser?'#1e2535':(badge?.cor?badge.cor+'20':'#1e2535')}`, fontSize:'13px', lineHeight:'1.7', color:'#cbd5e1' }}>
+                    <MarkdownContent content={m.content} compact />
+                    {m.isStreaming && <span style={{ display:'inline-block', width:'8px', height:'1.2em', marginLeft:'2px', verticalAlign:'bottom', background:'#60a5fa', borderRadius:'999px', animation:'pulseCursor 1s ease-in-out infinite' }} />}
                   </div>
                 </div>
               </div>
@@ -210,7 +239,7 @@ export default function TrabalhoPage() {
           {loading && <div style={{ display:'flex', gap:'8px', alignItems:'center', padding:'10px 0', color:'#4a5568', fontSize:'13px' }}>
             <div style={{ display:'flex', gap:'4px' }}>{[0,1,2].map(i=><div key={i} style={{ width:'6px', height:'6px', borderRadius:'50%', background:'#4f8ef7', animation:`bounce 1.2s ${i*0.2}s infinite ease-in-out` }}/>)}</div>
             A processar…
-            <style>{`@keyframes bounce{0%,80%,100%{transform:scale(0.5);opacity:0.3}40%{transform:scale(1);opacity:1}}`}</style>
+            <style>{`@keyframes bounce{0%,80%,100%{transform:scale(0.5);opacity:0.3}40%{transform:scale(1);opacity:1}} @keyframes pulseCursor{0%,100%{opacity:0.35}50%{opacity:1}}`}</style>
           </div>}
           <div ref={chatEnd}/>
         </div>
@@ -254,7 +283,7 @@ export default function TrabalhoPage() {
               {seccaoAberta ? (
                 <>
                   <div style={{ fontWeight:700, color:'#cbd5e1', fontSize:'13px', marginBottom:'12px', paddingBottom:'8px', borderBottom:'1px solid #1e2535' }}>{seccaoAberta.titulo}</div>
-                  <div style={{ fontSize:'13px', lineHeight:'1.8', color:'#94a3b8', whiteSpace:'pre-wrap' }}>{seccaoAberta.conteudo}</div>
+                  <div style={{ fontSize:'13px', lineHeight:'1.8', color:'#94a3b8' }}><MarkdownContent content={seccaoAberta.conteudo} /></div>
                 </>
               ) : (
                 <div style={{ color:'#2d3748', fontSize:'13px', padding:'20px 0' }}>Clica em ✏️ numa secção escrita para ver o conteúdo.</div>
