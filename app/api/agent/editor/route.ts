@@ -49,7 +49,7 @@ export async function POST(req: Request) {
       .select('titulo, autor, ano, conteudo, fonte_apa')
       .eq('trabalho_id', trabalho_id);
 
-    // Executar Editor (Gemini)
+    // Executar Editor (Groq)
     const resultado = await executarEditor({
       titulo_seccao: estrutura?.titulo_seccao ?? `Secção ${capitulo_index}.${seccao_index}`,
       conteudo_atual: seccao.conteudo_markdown,

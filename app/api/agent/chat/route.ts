@@ -1,7 +1,7 @@
 import { NextResponse } from 'next/server';
-import { GoogleGenAI } from '@google/genai';
+import Groq from 'groq-sdk';
 
-const ai = new GoogleGenAI({ apiKey: process.env.GEMINI_API_KEY! });
+const groq = new Groq({ apiKey: process.env.GROQ_API_KEY! });
 
 interface ChatMessage {
   role: 'user' | 'assistant' | 'system';
@@ -29,13 +29,16 @@ ${history || '(sem histórico)'}
 Responde de forma útil, académica e em Português europeu. Sê conciso mas preciso.
 Se o utilizador pedir para gerar índice, estrutura ou organização do trabalho, sugere o agente planificador.`;
 
-    const response = await ai.models.generateContent({
-      model: 'gemini-2.0-flash',
-      contents: prompt,
-      config: { temperature: 0.5, maxOutputTokens: 1024 },
+    const response = await groq.chat.completions.create({
+      model: 'meta-llama/llama-4-maverick-17b-128e-instruct',
+      messages: [{ role: 'user', content: prompt }],
+      temperature: 0.5,
+      max_tokens: 1024,
     });
 
-    return NextResponse.json({ content: response.text?.trim() ?? 'Sem resposta.' });
+    return NextResponse.json({
+      content: response.choices[0]?.message?.content?.trim() ?? 'Sem resposta.',
+    });
   } catch (err: any) {
     console.error('Agent chat error:', err);
     return NextResponse.json({ error: err.message ?? 'Erro ao gerar resposta' }, { status: 500 });

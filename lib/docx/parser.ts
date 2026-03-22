@@ -4,7 +4,7 @@ import remarkMath from 'remark-math';
 import { DocumentNode, InlineNode } from './types';
 
 export function parseToAST(markdown: string): DocumentNode[] {
-  // Preprocess Gemini-style math delimiters to standard markdown math delimiters
+  // Preprocess alternate math delimiters to standard markdown math delimiters
   const preprocessed = markdown
     .replace(/\\\((.*?)\\\)/g, '$$$1$$') // \( ... \) to $...$
     .replace(/\\\[([\s\S]*?)\\\]/g, '$$$$$1$$$$'); // \[ ... \] to $$...$$
